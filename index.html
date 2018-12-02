@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Philly Chat</title>
+    <link rel="stylesheet" type="text/css" href="/public/style.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="/private/script.js"></script>
+   <script src="/socket.io/socket.io.js"></script>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <script src='https://cdn.jsdelivr.net/jquery.cloudinary/1.0.18/jquery.cloudinary.js' type='text/javascript'></script>
+   <script src="//widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+    <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.form/4.2.2/jquery.form.min.js"></script>
+</head>
+<body> <!-- -->  
+  <!--
+<center>
+
+  <video autoplay muted loop id="myVideo">
+    <source src="sam.mp4" type="video/mp4">
+  </video>
+  </center>
+-->
+  <div id="backgroundImage">
+
+  </div>
+
+<div id="error" style="z-index: 999;visibility: hidden;box-shadow: 0px 2px 5px #333; width:420px;  height:50px; background-color:#2A0E39; position:absolute; margin-left: 70%;">
+<div style="height:35px; width:35px;border-radius:100%; margin-top: 8px;position: absolute; margin-left: 5px; background-color:white;"> </div>
+<span style="color:white;margin-top: 10px; margin-left: 60px;font-size:25px;position: absolute"> Please enter a name and message! </span>
+</div>
+  <div style="position: relative;border: 1px solid #dddddd;height:700px; width:700px;" id="contain">
+
+
+    <input id="txtName"   type="text" placeholder="Name" />
+
+  <div id="scrollDiv" style="  max-height:500px;  overflow-y:auto;">
+     <div style="max-height:400px; min-height:400px; width:200px;  overflow-y:auto;" id="messages"></div>
+  </div>
+
+<br />
+              <textarea style="width:680px;"id="txtMessage" placeholder="Message"></textarea>
+
+       <button id="send">Send</button>
+       <p id="typing" style="margin-left:5px;  position: absolute; margin-top:-20px; color:grey; "> </p>
+
+       <form style="position:absolute" id="form" action="/cloud" method="post" enctype="multipart/form-data">
+         Upload a File:
+         <input type="file" id="myfile" name="myfile">
+         <input type="submit" id="submit" name="submit" value="Upload File Now" >
+     </form>
+     <p id="status"></p>
+
+     </div>
+
+
+<p style="margin-top:-100%;"  id="time"><em>  </em></p>
+
+
+
+<script>
+var socket = io();
+
+socket.on("chat", addChat);
+    $(function() {
+
+      $('#form').ajaxForm(function(response) {
+        alert(response);
+      });
+/*
+*/
+     //alert("hi");
+     var height = window.innerHeight;
+     $("#contain").css("margin-top", height * 0.5 );
+     $("#contain").css("transform", "translateY(-50%)" );
+     $("body").css("overflow", "hidden");
+     var timeStamp = new Date();
+     var month = timeStamp.getMonth() +1;
+     var dayMonth = timeStamp.getDate();
+     var year = timeStamp.getFullYear();
+     var time = timeStamp.toLocaleTimeString('en-US');
+     var current = time.substr(0, 4) + time.substr(7, 3);
+    // var stop = document.getElementById("txtMessage");
+     switch(month) {
+    case 1:
+      month = "Jan"
+        break;
+    case 2:
+      month = "Feb"
+        break;
+    case 3:
+      month = "Mar"
+        break;
+    case 4:
+      month = "Apr"
+        break;
+    case 5:
+      month = "May"
+        break;
+    case 6:
+      month = "Jun"
+        break;
+    case 7:
+      month = "Jul"
+            break;
+    case 8:
+      month = "Aug"
+        break
+    case 9:
+        month = "Sep"
+            break;
+    case 10:
+        month = "Oct"
+            break;
+      case 11:
+        month = "Nov"
+            break;
+      case 12:
+        month = "Dec"
+            break;
+    default:
+      month = "";
+}
+     var stamp = month + ' ' + dayMonth + ', ' + year + ' ' + current;
+
+  //   alert(current);
+  //   alert(stamp);
+      getChats()
+      window.onbeforeunload = function() {
+          localStorage.setItem("name", $('#txtName').val());
+
+      }
+      window.onload = function() {
+    var name = localStorage.getItem("name");
+    if (name !== null) $('#txtName').val(name);
+}
+    var d = $('#scrollDiv');
+    d.animate({ scrollTop: d.prop('scrollHeight') }, 100);
+
+
+    var message = document.getElementById("txtMessage");
+    var handle =  document.getElementById("txtName");
+    var types =   document.getElementById("typing");
+    var btn = document.getElementById("send");
+
+
+    var timeout;
+
+    function timeoutFunction() {
+      var  typing = false;
+        socket.emit("typing", false);
+    }
+
+    message.addEventListener("keypress", function(){
+    socket.emit("typing", handle.value);
+    console.log(handle.value + ' is typing');
+    typing = true;
+    clearTimeout(timeout);
+    timeout = setTimeout(timeoutFunction, 2000);
+    });
+
+    socket.on("typing", function(data){
+      if (data) {
+   types.innerHTML = '<p> <em>' + data + ' is typing a message... </em> </p>';
+ }else {
+      types.innerHTML = '';
+ }
+});
+
+btn.addEventListener('click', function(){
+socket.emit('chat', types.value);
+});
+socket.on('chat', function(data){
+ types.innerHTML = "";
+});
+
+
+        $("#send").click(() => {
+        $("#txtMessage").val($.trim($("#txtMessage").val()).replace(/\s*[\r\n]+\s*/g, '\n')
+                                        .replace(/(<[^\/][^>]*>)\s*/g, '$1')
+                                        .replace(/\s*(<\/[^>]+>)/g, '$1'));
+          if($("#txtName").val() == "" || $("#txtMessage").val() == ""){
+            //alert("empty");
+              $("#error").css({opacity: 1.0, visibility: "visible"}).animate({opacity: 0, visibility: "hidden"}, 2500);
+                 $("#error").css("opacity", "1");
+          return true;
+        }else if($("#txtName").val() != "" && $("#txtMessage").val() != "") {
+          $("#time").html('  <em style="font-size:12px;">' + stamp + '</em> ');
+          $("#txtMessage").val($("#txtMessage").val() + ' ' + $("#time").html());
+            var chatMessage = {
+                name: $("#txtName").val(), chat: $("#txtMessage").val()
+            }
+          }
+            postChat(chatMessage);
+            $('#send').blur();
+          //  $('#txtName').val(name);
+            $('#txtMessage').val('');
+            d.animate({ scrollTop: d.prop('scrollHeight') }, 100);
+            socket.emit("typing", false);
+        })
+
+    })
+
+    function postChat(chat) {
+        $.post("/chats", chat)
+        console.log(chat);
+}
+
+function getChats() {
+     $.get("/chats", (chats) => {
+         chats.forEach(addChat)
+     });
+}
+
+function addChat(chatMessage){
+
+    $("#messages").append(`<p style="margin-left:5px;"><strong> ${chatMessage.name}:</strong> ${chatMessage.chat}</p> `).css("display","inline");
+}
+
+</script>
+
+</body>
+
+
+</html>
